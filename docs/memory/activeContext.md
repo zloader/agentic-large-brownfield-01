@@ -69,7 +69,7 @@ It complements the static reference docs in `docs/memory/` (see `techContext.md`
 | KI-001 | `isElementInFrame` is O(n) — iterates all elements per call with no cache | **High** — render jank / frame drop in scenes with 500+ elements in frames (drag ops worst case) | Open / No fix scheduled | `packages/element/src/frame.ts` line 752. Marked `// TODO: this a huge bottleneck for large scenes, optimise` |
 | KI-002 | `UIOptions` normalization creates a new object on every parent render, busting memoization for all memoized toolbar/panel children | **Medium** — unnecessary re-renders in high-frequency scenarios (collab, animations) | Open | `packages/excalidraw` — FIXME comment. Incorrect memoization boundary. |
 | KI-003 | Theme change detection is piggybacked on element-mutation Store listener, causing thousands of spurious theme comparisons per session | **Medium** — performance regression in text-heavy sessions; also causes a brief visual flash if theme changes with no concurrent mutations | Open | Workaround for missing Store event type. FIXME comment in source. |
-| KI-004 | `isSomeElementSelected` utility holds global state that should be instance-scoped | **Low–Medium** — breaks isolation between multiple `<Excalidraw />` instances on same page | Open | `packages/excalidraw` — FIXME: `move this into the editor instance` |
+| KI-004 | `isSomeElementSelected` utility holds global state that should be instance-scoped | **Low–Medium** — breaks isolation between multiple `<Excalidraw />` instances on same page | Open | `packages/element/src/selection.ts` line 138 — FIXME: `move this into the editor instance to keep utility methods stateless` |
 | KI-005 | `LocalData.pauseSave("collaboration")` may not resume on error paths during collab startup | **Medium** — if collaboration startup throws mid-sequence, auto-save remains paused indefinitely for the session | Open | `excalidraw-app/collab/Collab.tsx` — no `try/finally` guard |
 | KI-006 | Element deletion during delta-sync sets `isDeleted: true` and tracks `originalText`, which is acknowledged as a design violation breaking versioning | **Medium** — can cause stale data in collaborative sessions | Open | `// TODO: we should not do this since it breaks sync / versioning` |
 | KI-007 | `positionElementsOnGrid` is acknowledged as low-quality (`// TODO rewrite (mostly vibe-coded)`) | **Low** — potential correctness issues in grid snapping edge cases | Open | `packages/element/src/` |
@@ -82,9 +82,14 @@ It complements the static reference docs in `docs/memory/` (see `techContext.md`
 
 Discovered while documenting `decisionLog.md`. The collaboration session lifecycle in `excalidraw-app/collab/Collab.tsx` has **no explicit state machine**. Session state is inferred from a combination of:
 - Jotai atoms: `isCollaboratingAtom`, `collabErrorIndicatorAtom`
-- Instance flags: `portal.socketInitialized`, `isSyncing`
+- Instance flags: `portal.socketInitialized`, `socketInitializationTimer`, `fallbackInitializationHandler`
 
-**Key non-obvious transition:** `CONNECTING → CONNECTED` is only confirmed after the server emits an `"init-room"` message setting `portal.socketInitialized = true`. This is the single gate — missing it means the app silently thinks it's connected when it isn't.
+**Key non-obvious transition:** `CONNECTING → CONNECTED` is gated on `portal.socketInitialized = true`, which is set inside `initializeRoom()`. This is triggered by three paths:
+1. **Primary:** the `"first-in-room"` socket event.
+2. **Fallback 1:** a `"connect_error"` socket event listener (`fallbackInitializationHandler`).
+3. **Fallback 2:** `socketInitializationTimer` firing `fallbackInitializationHandler` after `INITIAL_SCENE_UPDATE_TIMEOUT` ms — guards against joining a non-empty room that never emits `"first-in-room"`.
+
+`portal.socketInitialized` is the authoritative gate (checked at lines 585 and 976), but it has multiple setter paths — debugging a silent "connected but not initialised" state requires checking all three triggers.
 
 **`restoreElements()` order matters:** It runs *before* reconciliation (not after), because running it post-reconciliation regenerates ephemeral state like `appState.newElement`, breaking in-progress drawing strokes.
 
@@ -94,7 +99,9 @@ Discovered while documenting `decisionLog.md`. The collaboration session lifecyc
 
 ### Bind Mode Timer — Hidden Timing Risk
 
-The `bindModeHandler` in `App.tsx` is a bare `setTimeout` stored as an instance property. The transition from `BIND_MODE` back to `SELECTION` is time-driven, not event-driven. Under GC pauses or heavy CPU load, the timer fires late, potentially binding an arrow to an unintended target. No mitigation exists; be aware during debugging of unexpected binding behavior.
+The `bindModeHandler` in `App.tsx` is a bare `setTimeout` stored as an instance property (`BIND_MODE_TIMEOUT = 700ms`, defined in `packages/common/src/constants.ts`). The `bindMode` state has three values: `"orbit"` (hovering near a bindable element), `"inside"` (bound), and `"skip"` (binding suppressed). The timer drives the transition from `"orbit"` → `"inside"` — i.e., it gates *entering* bind, not exiting it.
+
+Under GC pauses or heavy CPU load, the timer fires late, potentially binding an arrow to an unintended target. Several partial mitigations exist in the `effector` callback: it re-fetches `hoveredElement` from `lastPointerMoveCoords` at execution time (not from when the timer was set), checks `bindMode !== "skip"` before acting, and asserts `selectedLinearElement.elementId === arrow.id` via `invariant`. The timer is also cancelled via `clearTimeout` if the pointer leaves the bindable element before it fires. Despite these guards, the time-driven nature of the transition remains a latent debugging hazard under load.
 
 ---
 
