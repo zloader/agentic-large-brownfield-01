@@ -1,7 +1,7 @@
 # Project Brief: Excalidraw
 
-**Version:** 1.0  
-**Date:** 2026-03-28  
+**Version:** 1.0
+**Date:** 2026-03-28
 **Status:** Active
 
 ---
@@ -117,41 +117,13 @@ Tabular data (e.g., from a spreadsheet) pasted into the canvas is parsed and ren
 
 ## 6. Non-Functional Requirements
 
-### Performance
-- Canvas rendering must remain smooth (target ≥ 60 fps) for scenes containing hundreds of elements.
-- Collaboration cursor synchronisation is capped at ~30 fps (`CURSOR_SYNC_TIMEOUT = 33ms`).
-- File uploads are limited to 4 MiB per file (`FILE_UPLOAD_MAX_BYTES`).
-- Scene data is compressed and delta-diffed before transmission to minimise WebSocket payload size.
-
-### Scalability
-- The client-side architecture is stateless; horizontal scaling of the WebSocket collaboration server is an external concern.
-- Firebase Firestore and Storage handle persistence scalability without client-side changes.
-- The npm package is tree-shakeable and split into focused sub-packages to avoid unnecessary bundle bloat in consuming applications.
-
-### Availability
-- The PWA service worker ensures the application remains available and functional with no network connection after the initial load.
-- Local auto-save protects against data loss on unexpected browser closure.
-- Firebase and Socket.IO connection errors are surfaced to the user gracefully, with offline state indicators.
-
-### Security
-- All collaboration and shared-link data is end-to-end encrypted (AES-GCM, 128-bit keys) on the client; the server stores only ciphertext.
-- Encryption keys are embedded in URL fragments and are never transmitted to the server.
-- No personally identifiable information (PII) is required; usernames are ephemeral and locally stored.
-- The `VITE_APP_FIREBASE_CONFIG` and other secrets are supplied via environment variables, never committed to source.
-
-### Compatibility
-- **Browsers:** Modern evergreen browsers (Chrome ≥ 70, Firefox, Safari ≥ 12, Edge ≥ 79). No IE 11 support.
-- **Node.js:** ≥ 18.0.0 required for development and build tooling.
-- **Devices:** Desktop-first; touch and pen input supported on mobile/tablet via pointer event handling (PEP polyfill).
-
-### Internationalisation & Accessibility
-- UI strings are managed via an i18n system with browser locale detection and Crowdin-managed translations.
-- Keyboard shortcuts and focus management are implemented throughout for keyboard-accessible operation.
-
-### Compliance
-- The project is MIT licensed; all dependencies must be compatible with open-source distribution.
-- No tracking or analytics data is collected in self-hosted/Docker deployments (`VITE_APP_DISABLE_SENTRY=true`).
-- Optional analytics (Sentry error tracking, event analytics) are gated behind build-time environment variables.
+- **Performance:** ≥ 60 fps canvas rendering; cursor sync ~30 fps (`CURSOR_SYNC_TIMEOUT = 33ms`); 4 MiB file upload limit (`FILE_UPLOAD_MAX_BYTES`); scene data compressed and delta-diffed over WebSocket.
+- **Scalability:** Stateless client; Firebase handles persistence scalability; npm package is tree-shakeable and split into focused sub-packages.
+- **Availability:** PWA service worker for offline use; local auto-save against data loss; Firebase/Socket.IO errors surfaced with offline indicators.
+- **Security:** E2E encrypted (AES-GCM, 128-bit); keys in URL fragment only; no PII; secrets via env vars, never committed.
+- **Compatibility:** Chrome ≥ 70, Firefox, Safari ≥ 12, Edge ≥ 79; Node.js ≥ 18; desktop-first, touch/pen via pointer events.
+- **i18n & Accessibility:** i18n with locale detection and Crowdin translations; full keyboard navigation support.
+- **Compliance:** MIT licensed; open-source-compatible deps; analytics (Sentry) opt-in via env vars, off by default in self-hosted.
 
 ---
 
@@ -182,30 +154,11 @@ Tabular data (e.g., from a spreadsheet) pasted into the canvas is parsed and ren
 
 ## 8. Success Metrics
 
-### Adoption & Usage
-- npm weekly downloads of `@excalidraw/excalidraw` (target: sustained growth quarter-over-quarter).
-- Monthly active users on excalidraw.com.
-- Number of active collaboration rooms created per day.
-
-### Quality & Reliability
-- Test coverage maintained across unit tests (Vitest) and integration tests; no regressions in CI.
-- P95 canvas render time < 16ms for scenes with ≤ 500 elements.
-- Error rate (Sentry) < 0.1% of sessions.
-- Zero known end-to-end encryption bypasses.
-
-### Developer Experience
-- Time-to-first-draw for new users < 5 seconds (no sign-up, no configuration required).
-- Successful embedding in a new React project achievable in < 15 minutes using published documentation.
-- npm package bundle size remains within an agreed budget (tracked in CI).
-
-### Community Health
-- Open-source contributor activity: pull requests reviewed and merged within a defined SLA.
-- Crowdin translation coverage ≥ 80% for top-10 languages by user base.
-- GitHub issue resolution time for critical bugs < 48 hours.
-
-### Business
-- Measurable Excalidraw Plus conversion rate from in-app prompts.
-- Self-hosted Docker image pull count growth.
+- **Adoption & Usage:** `@excalidraw/excalidraw` npm downloads growing QoQ; MAU on excalidraw.com; daily collaboration rooms created.
+- **Quality & Reliability:** No CI regressions; P95 canvas render < 16ms for ≤ 500 elements; Sentry error rate < 0.1% of sessions; zero E2E encryption bypasses.
+- **Developer Experience:** Time-to-first-draw < 5s (no sign-up); new React embedding achievable in < 15 min; npm bundle size within CI-tracked budget.
+- **Community Health:** PRs reviewed/merged within SLA; Crowdin coverage ≥ 80% for top-10 languages; critical bug resolution < 48h.
+- **Business:** Measurable Excalidraw Plus conversion from in-app prompts; Docker image pull count growth.
 
 ---
 
