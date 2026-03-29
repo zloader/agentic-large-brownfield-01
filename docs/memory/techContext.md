@@ -87,7 +87,7 @@ The production deployment model is a **static single-page application** — no s
 
 ### 2.6 Authentication & Security
 
-> Full details in [architecture.md §7 — Security](../technical/architecture.md#7-security): AES-GCM 256-bit E2EE, URL-fragment key distribution, no RBAC or server-side auth, `excplus-auth` cookie detection, and build-time secrets injection.
+> Full details in [architecture.md §7 — Security](../technical/architecture.md#7-security): AES-GCM 128-bit E2EE, URL-fragment key distribution, no RBAC or server-side auth, `excplus-auth` cookie detection, and build-time secrets injection.
 
 ---
 
@@ -136,7 +136,7 @@ All runtime configuration is **baked in at build time** via Vite environment var
 
 ## 8. Security & Compliance
 
-> Full details in [architecture.md §7 — Security](../technical/architecture.md#7-security): AES-GCM 256-bit E2EE per data type, no RBAC (URL possession = access), no PII collected, no client-side audit logs, MIT/GDPR/SOC 2 compliance posture, and input sanitisation. See also [encryption.md](../technical/encryption.md) for implementation specifics.
+> Full details in [architecture.md §7 — Security](../technical/architecture.md#7-security): AES-GCM 128-bit E2EE per data type, no RBAC (URL possession = access), no PII collected, no client-side audit logs, MIT/GDPR/SOC 2 compliance posture, and input sanitisation. See also [encryption.md](../technical/encryption.md) for implementation specifics.
 
 ---
 

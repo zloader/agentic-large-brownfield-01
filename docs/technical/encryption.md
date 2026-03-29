@@ -17,7 +17,7 @@ All collaboration and share-link data is encrypted **client-side before leaving 
 | Property | Value |
 |---|---|
 | **Algorithm** | AES-GCM |
-| **Key length** | 256-bit |
+| **Key length** | 128-bit |
 | **IV** | 12-byte random per message |
 | **Key format** | JWK (exportable) |
 | **API** | Web Crypto API (`window.crypto.subtle`) |
