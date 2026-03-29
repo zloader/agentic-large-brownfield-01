@@ -1,20 +1,12 @@
 # Tech Context: Excalidraw
 
-**Version:** 1.0
-**Date:** 2026-03-28
-**Status:** Active
+**Version:** 1.0 | **Date:** 2026-03-28 | **Status:** Active
 
 ---
 
 ## 1. Introduction
 
-This document captures the complete technical environment of the Excalidraw monorepo. It exists as a single point of reference for engineers, DevOps practitioners, and architects who need to understand:
-
-- **What** technology is used and **why** it was chosen.
-- **How** the system is built, deployed, and operated.
-- **Where** the known limitations and future evolution points lie.
-
-It is intended to accelerate onboarding, reduce debugging time, and ensure that new work is consistent with established patterns. This document covers the `excalidraw-app` deployable web application and the `@excalidraw/excalidraw` embeddable npm component. External systems (the collaboration WebSocket server, Firebase project, and AI API endpoint) are documented as integration points but are not managed in this repository.
+This document captures the complete technical environment of the Excalidraw monorepo — a single point of reference covering what technology is used and why, how the system is built and deployed, and where known limitations lie. It covers the `excalidraw-app` deployable web application and the `@excalidraw/excalidraw` embeddable npm component. External systems (collaboration WebSocket server, Firebase, AI API) are documented as integration points only.
 
 ---
 
@@ -91,6 +83,37 @@ The production deployment model is a **static single-page application** — no s
 
 ---
 
+### 2.7 Monorepo Structure
+
+| Package                    | Path                   | Purpose                                     |
+|:---------------------------|:-----------------------|:--------------------------------------------|
+| **excalidraw-app**         | `excalidraw-app/`      | Deployable web application (excalidraw.com) |
+| **@excalidraw/excalidraw** | `packages/excalidraw/` | Embeddable React component published to npm |
+| **@excalidraw/common**     | `packages/common/`     | Shared constants, types, and utilities      |
+| **@excalidraw/element**    | `packages/element/`    | Element definitions and mutation helpers    |
+| **@excalidraw/math**       | `packages/math/`       | Geometry and canvas math functions          |
+| **@excalidraw/utils**      | `packages/utils/`      | Additional shared utilities                 |
+
+**Build orchestration:** Managed by yarn workspaces; shared dependencies hoisted to root `node_modules/`.
+
+---
+
+## 3. Core Development Commands
+
+| Command               | Purpose                                                   |
+|:----------------------|:----------------------------------------------------------|
+| `yarn install`        | Install all dependencies for the monorepo                 |
+| `yarn start`          | Start Vite dev server for excalidraw-app (port 3000)      |
+| `yarn build:app`      | Production build of excalidraw-app                        |
+| `yarn build:packages` | Production build of all `@excalidraw/*` npm packages      |
+| `yarn test`           | Run Vitest unit tests                                     |
+| `yarn fix`            | Run ESLint + Prettier auto-fix                            |
+| `yarn test:typecheck` | TypeScript compilation check (no emit)                    |
+
+**Package manager:** This project uses **yarn** (v1.x classic). Do not use npm or pnpm.
+
+---
+
 ## 4. CI/CD Pipeline
 
 > Full details in [architecture.md §9.3 — CI/CD Pipeline](../technical/architecture.md#93-cicd-pipeline): all GitHub Actions workflows (test, lint, Docker build/publish, npm release, bundle size, Sentry source maps, Crowdin), per-PR stages, and deployment strategy for Vercel, DockerHub, and the npm registry.
@@ -160,39 +183,13 @@ All runtime configuration is **baked in at build time** via Vite environment var
 
 ## 10. Known Limitations & Constraints
 
-### 10.1 Performance Bottlenecks
-
-> Full details in [technical-debt-catalog.md §7 — Performance Bottlenecks](../technical/technical-debt-catalog.md#7-performance-bottlenecks): large-canvas render degradation, main-thread blocking for encryption/reconciliation/TTD, and mobile UX lag.
-
-### 10.2 Tech Debt & Deprecated Components
-
-> Full details in [technical-debt-catalog.md §8 — Tech Debt & Deprecated Components](../technical/technical-debt-catalog.md#8-tech-debt--deprecated-components): Firebase vendor coupling, build-time feature flags, LWW reconciliation gaps, missing e2e tests, TTD reliability, and monorepo build complexity.
-
-### 10.3 Scaling Challenges
-
-> Full details in [architecture.md §10 — Scalability & Availability](../technical/architecture.md#10-scalability--availability): Socket.IO relay as collaboration bottleneck, permanent key-loss risk from URL-fragment key model, and npm API stability tension.
+> **Performance:** large-canvas render degradation, main-thread blocking for encryption/reconciliation/TTD, mobile UX lag. **Tech Debt:** Firebase vendor coupling, LWW reconciliation gaps, missing e2e tests, monorepo build complexity. **Scaling:** Socket.IO relay as collaboration bottleneck, URL-fragment key-loss risk. See [technical-debt-catalog.md](../technical/technical-debt-catalog.md) and [architecture.md §10](../technical/architecture.md#10-scalability--availability).
 
 ---
 
-## 11. Future Tech Considerations
+## 11. Related Documentation
 
-| Consideration                             | Context                                                                                                                                                                                                              |
-|-------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **CRDT-based collaboration (Yjs)**        | As canvas complexity and session sizes grow, replacing the LWW reconciliation algorithm with a proper CRDT (e.g., Yjs) could eliminate periodic full-scene syncs and improve conflict resolution fidelity.           |
-| **Web Workers for heavy computation**     | Offloading reconciliation, AES-GCM encryption, and Mermaid-to-Excalidraw conversion to dedicated Web Worker threads would free the main thread for uninterrupted canvas rendering.                                   |
-| **Runtime feature flags**                 | Moving from build-time `VITE_APP_ENABLE_*` flags to a runtime feature flag service (e.g., LaunchDarkly, GrowthBook) would enable gradual rollouts and A/B testing without requiring a full rebuild and redeployment. |
-| **OpenTelemetry client-side tracing**     | Introducing structured spans for canvas render latency, collaboration sync round-trip time, and TTD pipeline duration would provide actionable performance visibility beyond ad-hoc Sentry traces.                   |
-| **Backend storage abstraction**           | Decoupling from Firebase by formalising the storage interface in `excalidraw-app/data/` would enable alternative backends (S3/MinIO, Supabase, self-hosted object storage) without rewriting the data layer.         |
-| **SSR for share previews**                | Adding a lightweight SSR layer (e.g., Next.js or Astro) for share-preview pages would improve SEO and social card previews without affecting the canvas runtime.                                                     |
-| **PWA Background Sync**                   | Using the Background Sync API to queue Firebase writes when offline and flush on reconnect would reduce data loss risk during intermittent connectivity in collab sessions.                                          |
-| **AI sidecar for Docker**                 | Containerising the AI/TTD proxy as a sidecar alongside the Docker image would allow self-hosted operators to run the full AI feature set without an external API contract.                                           |
-| **Module federation for Excalidraw Plus** | If the Plus team needs to inject UI surface into the open-source shell without forking, Vite Module Federation could provide a clean, version-independent boundary.                                                  |
-
----
-
-## 12. Related Documentation
-
-| Document | Location | Relationship |
-|---|---|---|
-| **Technical Architecture** | [`docs/technical/architecture.md`](../technical/architecture.md) | Comprehensive system design document covering component topology, data flows, rendering pipeline, security model, and deployment in full detail — expands on every section of this document |
-| **Developer Setup Guide** | [`docs/technical/dev-setup.md`](../technical/dev-setup.md) | Step-by-step guide for standing up the local development environment, covering all environment variables, Docker configuration, and troubleshooting scenarios referenced in §§4–6 |
+| Document | Location |
+|---|---|
+| **Technical Architecture** | [`docs/technical/architecture.md`](../technical/architecture.md) |
+| **Developer Setup Guide** | [`docs/technical/dev-setup.md`](../technical/dev-setup.md) |

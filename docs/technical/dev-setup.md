@@ -541,7 +541,7 @@ Excalidraw uses **end-to-end encryption** for shared scenes — the server never
 
 ### Collaboration Links & Encryption Keys
 
-- When you share a drawing, a random **256-bit AES-GCM key** is generated in the browser
+- When you share a drawing, a random **128-bit AES-GCM key** is generated in the browser
 - The key is embedded in the URL fragment (`#key=...`) and never sent to the server
 - Only users with the full link can decrypt the scene
 
