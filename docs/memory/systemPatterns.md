@@ -40,7 +40,7 @@ Excalidraw is a **client-side monolithic SPA** — Vite-bundled React, no SSR. A
 
 The scene is managed through an **immutable snapshot + named increment** pattern:
 
-```
+```text
 User interaction → App.mutateElement() → Store.capture()
                                           ├─ DurableIncrement  → undo/redo history + collab broadcast
                                           └─ EphemeralIncrement → collab cursor/idle (not stored)
