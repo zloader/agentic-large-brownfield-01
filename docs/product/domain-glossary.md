@@ -1,7 +1,7 @@
 # Domain Glossary — Excalidraw
 
-**Version:** 1.0  
-**Last Updated:** 2026-03-28  
+**Version:** 1.1
+**Last Updated:** 2026-03-29
 **Status:** Active
 
 ---
@@ -47,7 +47,7 @@ Entries are listed alphabetically.
 | | |
 |---|---|
 | **Definition** | The transient UI state that accompanies a drawing session: currently selected tool, zoom level, scroll position, open panels, active collaborator cursors, and similar ephemeral settings. AppState is **not** part of the diagram's persistent content. |
-| **Context** | Stored in Jotai atoms and selectively persisted to `localStorage` via `clearAppStateForLocalStorage()`. Serialised alongside scene elements when exporting to `.excalidraw` format, but a subset is stripped before local storage writes to avoid persisting session-only values. |
+| **Context** | Managed as React class component state in the `App` class and selectively persisted to `localStorage` via `clearAppStateForLocalStorage()`. Serialised alongside scene elements when exporting to `.excalidraw` format, but a subset is stripped before local storage writes to avoid persisting session-only values. |
 | **Examples** | `activeTool: "rectangle"`, `zoom: { value: 1.5 }`, `scrollX: -300`, `openDialog: "export"` |
 | **Related Terms** | [Scene](#scene), [Element](#element), [Session](#session) |
 
@@ -113,7 +113,7 @@ Entries are listed alphabetically.
 | | |
 |---|---|
 | **Definition** | A versioned, named change to the scene that is stored in undo/redo history and broadcast to collaborators. Distinct from an ephemeral increment, which is transient and never stored. |
-| **Context** | Produced by `Store.capture()` in `packages/element/src/store.ts` when a user performs a significant edit (e.g., moving an element, changing text). Contains a `StoreDelta` describing the inserted and deleted element sets. |
+| **Context** | Produced by `Store.scheduleCapture()` in `packages/element/src/store.ts` when a user performs a significant edit (e.g., moving an element, changing text). Contains a `StoreDelta` describing the inserted and deleted element sets. |
 | **Examples** | Moving a rectangle creates a durable increment; the undo stack grows by one entry. Moving a collaborator cursor creates an ephemeral increment. |
 | **Related Terms** | [Ephemeral Increment](#ephemeral-increment), [Scene Store](#scene-store), [StoreDelta](#storedelta) |
 
@@ -145,8 +145,8 @@ Entries are listed alphabetically.
 
 | | |
 |---|---|
-| **Definition** | A security model in which all diagram data (scene JSON and binary files) is encrypted on the client before leaving the browser, using AES-GCM 256-bit keys. No server — including Firebase or the WebSocket relay — ever receives plaintext data. |
-| **Context** | Implemented in `packages/excalidraw/data/encryption.ts` using the Web Crypto API. The AES key is generated client-side, formatted as a JWK, and embedded in the **URL fragment** (the `#` portion), which browsers never send to servers. Key loss means permanent data loss — this is an accepted trade-off for zero-trust storage. |
+| **Definition** | A security model in which all diagram data (scene JSON and binary files) is encrypted on the client before leaving the browser, using AES-GCM 128-bit keys. No server — including Firebase or the WebSocket relay — ever receives plaintext data. |
+| **Context** | Defined in `packages/excalidraw/data/encryption.ts` using the Web Crypto API. The AES key is generated client-side with a 128-bit length (`ENCRYPTION_KEY_BITS = 128`), formatted as a JWK, and embedded in the **URL fragment** (the `#` portion), which browsers never send to servers. Key loss means permanent data loss — this is an accepted trade-off for zero-trust storage. |
 | **Examples** | When sharing a diagram link, the URL fragment `#roomId,base64key` contains the decryption key. Anyone with the full URL can decrypt; anyone without the fragment cannot. |
 | **Related Terms** | [Collaboration Room](#collaboration-room), [FileId](#fileid), [Room Link](#room-link), [Share Link](#share-link) |
 
@@ -290,7 +290,7 @@ Entries are listed alphabetically.
 |---|---|
 | **Definition** | The Socket.IO client abstraction that manages the WebSocket connection lifecycle for a collaboration room, including connecting, reconnecting, broadcasting scene deltas, and syncing cursor positions. |
 | **Context** | Implemented in `excalidraw-app/collab/Portal.tsx`. `Portal` tracks which element versions have already been broadcast (`broadcastedElementVersions`) so only changed elements are included in delta payloads, minimising bandwidth. |
-| **Examples** | When a user joins a room, `Portal.connectToCollabRoom()` establishes the WebSocket connection. When an element is moved, `Portal.broadcastScene()` emits only the changed element. |
+| **Examples** | When a user joins a room, `Portal.open()` establishes the WebSocket connection. When an element is moved, `Portal.broadcastScene()` emits only the changed element. |
 | **Related Terms** | [Collaboration Room](#collaboration-room), [Durable Increment](#durable-increment), [Scene](#scene) |
 
 ---
@@ -334,7 +334,7 @@ Entries are listed alphabetically.
 |---|---|
 | **Definition** | The in-memory store that manages the canonical, immutable snapshot of the scene and produces versioned increments (durable or ephemeral) on every mutation. |
 | **Context** | Implemented in `packages/element/src/store.ts`. Follows an immutable snapshot + named increment model: each mutation produces a `StoreSnapshot` and a typed increment. Increments feed the undo/redo history and the collaboration broadcast layer. |
-| **Examples** | Every time a user moves an element, `Store.capture()` creates a new snapshot and emits a durable increment to the history stack. |
+| **Examples** | Every time a user moves an element, `Store.scheduleCapture()` creates a new snapshot and emits a durable increment to the history stack. |
 | **Related Terms** | [Durable Increment](#durable-increment), [Ephemeral Increment](#ephemeral-increment), [Scene](#scene), [StoreDelta](#storedelta) |
 
 ---
@@ -391,6 +391,17 @@ Entries are listed alphabetically.
 | **Context** | Accessed through the TTD dialog (`packages/excalidraw/components/TTDDialog/`). The pipeline is: user prompt → streaming AI response (Mermaid) → syntax validation → auto-fix → conversion to elements → placement on canvas. Chat history is persisted in IndexedDB under `IDB_TTD_CHATS`. |
 | **Examples** | Typing "A user logs in, the Auth Service validates credentials, and returns a JWT" generates a sequence diagram as native Excalidraw elements. |
 | **Related Terms** | [Mermaid](#mermaid), [Scene](#scene) |
+
+---
+
+### Tool
+
+| | |
+|---|---|
+| **Definition** | A user-selectable drawing mode that determines the type of element created on the next pointer interaction (e.g., rectangle tool, arrow tool, text tool, selection tool). |
+| **Context** | Tools are registered in the toolbar and activated via clicks or keyboard shortcuts. The active tool is stored in `appState.activeTool`. Once an element is created, the tool may remain active (if `locked: true`) or revert to the selection tool. |
+| **Examples** | Rectangle tool (`"rectangle"`), arrow tool (`"arrow"`), freedraw tool (`"freedraw"`), text tool (`"text"`), hand tool (`"hand"`), eraser tool (`"eraser"`) |
+| **Related Terms** | [Action](#action), [AppState](#appstate), [Element](#element) |
 
 ---
 
