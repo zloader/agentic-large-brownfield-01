@@ -320,7 +320,7 @@ Pre-commit hooks (Husky + lint-staged) run ESLint and Prettier on staged files.
 
 ### Jotai Atoms + Imperative Store
 
-Excalidraw uses a **hybrid** model: **Jotai** (v2 + `jotai-scope`) for reactive UI atoms and an **imperative element store** (`element/src/store.ts`) for canonical drawing data — separating high-frequency mutation from lower-frequency UI state.
+Excalidraw uses a **hybrid** model: **Jotai** (v2 + `jotai-scope`) for reactive UI atoms and an **imperative element store** (`@excalidraw/element → src/store.ts`) for canonical drawing data (see §2.3) — separating high-frequency mutation from lower-frequency UI state.
 
 ```mermaid
 graph TD
